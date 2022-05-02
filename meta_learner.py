@@ -9,11 +9,11 @@ from haiku import Params
 
 class MetaLearner(abc.ABC):
 
-  # @abc.abstractmethod
-  # def __call__(self, x: jnp.ndarray):
-  #   """
-  #   Predict.
-  #   """
+  @abc.abstractmethod
+  def __call__(self, params: Params, x: jnp.ndarray):
+    """
+    Predict.
+    """
 
   @property
   @abc.abstractmethod
@@ -52,7 +52,7 @@ class MetaLearner(abc.ABC):
 
   @abc.abstractmethod
   def update_step(self, prior_params: Params, support: Tuple[jnp.ndarray,
-                                                       jnp.ndarray],
+                                                             jnp.ndarray],
                   query: Tuple[jnp.ndarray, jnp.ndarray]):
     """
     Compute the grads needed to apply in order to update the model's parameters.

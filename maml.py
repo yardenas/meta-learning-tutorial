@@ -1,3 +1,4 @@
+import functools
 from typing import Callable, Tuple
 
 from functools import partial
@@ -24,6 +25,10 @@ class Maml(MetaLearner):
     self._inner_lr = inner_lr
     self._adaptation_steps = adaptation_steps
 
+  @functools.partial(jax.jit, static_argnums=0)
+  def __call__(self, params: Params, x: jnp.ndarray):
+    return self.net(params, x)
+
   @property
   def prior_params(self) -> Params:
     return self._prior_params
@@ -48,7 +53,7 @@ class Maml(MetaLearner):
     new_params = params
 
     def loss(params: Params):
-      log_likelihood = self.net(params, x).log_prob(y)
+      log_likelihood = self.net(params, x).log_prob(y).mean()
       return -log_likelihood
 
     for _ in range(self._adaptation_steps):
@@ -70,7 +75,8 @@ class Maml(MetaLearner):
       x_support, y_support = support
       posterior_params = self._adaptation_step(params, x_support, y_support)
       x_query, y_query = query
-      log_likelihood = self.net(posterior_params, x_query).log_prob(y_query)
+      log_likelihood = self.net(posterior_params,
+                                x_query).log_prob(y_query).mean()
       return -log_likelihood
 
     return jax.grad(_step)(params)
