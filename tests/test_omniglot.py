@@ -9,9 +9,6 @@ def omniglot_dataset():
 
 
 def test_make_dataset(omniglot_dataset):
-  images, labels = next(
-      iter(
-          omniglot_dataset._make_dataset(
-              omniglot_dataset.metatrain_character_folders)))
+  images, labels = next(iter(omniglot_dataset.train_set))
   assert tuple(images.numpy().shape) == (128, 2, 3, 28, 28, 1)
   assert tuple(labels.numpy().shape) == (128, 2, 3, 3)

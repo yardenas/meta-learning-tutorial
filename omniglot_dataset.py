@@ -48,22 +48,26 @@ class Omniglot:
     random.shuffle(character_folders)
     num_val = 100
     num_train = 1100
-    self.metatrain_character_folders = character_folders[:num_train]
-    self.metaval_character_folders = character_folders[num_train:num_train +
-                                                       num_val]
-    self.metatest_character_folders = character_folders[num_train + num_val:]
+    self.metatrain = self._make_dataset(character_folders[:num_train])
+    self.metaval = self._make_dataset(character_folders[num_train:num_train +
+                                                        num_val])
+    self.metatest = self._make_dataset(character_folders[num_train + num_val:])
 
-  def train_sample(self) -> Iterator[np.ndarray]:
-    pass
+  @property
+  def train_set(self) -> Iterator[np.ndarray]:
+    yield from self.metatrain.as_numpy_iterator()
 
-  def eval_sample(self) -> Iterator[np.ndarray]:
-    pass
+  @property
+  def eval_set(self) -> Iterator[np.ndarray]:
+    yield from self.metatrain.as_numpy_iterator()
 
-  def test_sample(self) -> Iterator[np.ndarray]:
-    pass
+  @property
+  def test_set(self) -> Iterator[np.ndarray]:
+    yield from self.metatrain.as_numpy_iterator()
 
   def _make_dataset(self, folders: List[str]) -> tfd.Dataset:
-    characters = tfd.Dataset.from_tensor_slices(folders).shuffle(1100)
+    characters = tfd.Dataset.from_tensor_slices(folders).shuffle(
+        1100, seed=self.seed, reshuffle_each_iteration=True)
 
     def get_images_filenames(char):
       all_images = tfio.matching_files(char + '/*.png')
