@@ -28,16 +28,15 @@ def maml_model(dataset):
 
     def cnn(x):
       x = nets.cnn(x, depth=32, kernels=(4, 4, 4))
-      x = hk.Flatten()(x)
-      logits = hk.Linear(NUM_CLASSSES)(x)
-      return logits
+      return x
 
-    cnn = hk.BatchApply(cnn, 2)
-    logits = cnn(x)
+    x = cnn(x)
+    x = hk.Flatten()(x)
+    logits = hk.Linear(NUM_CLASSSES)(x)
     return tfd.OneHotCategorical(logits)
 
   support, _ = next(dataset.train_set)
-  model = maml.Maml(hk.BatchApply(net, 2), support[0], 0.4)
+  model = maml.Maml(hk.BatchApply(net, 3), support[0], 0.4)
   return model
 
 
