@@ -71,13 +71,17 @@ class Omniglot:
 
     def get_images_filenames(char):
       all_images = tfio.matching_files(char + '/*.png')
-      return tf.random.shuffle(
-          all_images, seed=self.seed)[:self.num_samples_per_class + 1]
+      return tfd.Dataset.from_tensor_slices(
+          tf.random.shuffle(all_images,
+                            seed=self.seed)[:self.num_samples_per_class + 1])
 
     # Use interleave to read the relevant .png files as we iterate through the
-    # 1100 different chars.
+    # 1100 different chars. Set block_length to num_samples_per_class so that
+    # we can next batch images from same char together.
     image_filenames = characters.interleave(
-        get_images_filenames, num_parallel_calls=tfd.AUTOTUNE)
+        get_images_filenames,
+        num_parallel_calls=tfd.AUTOTUNE,
+        block_length=self.num_samples_per_class + 1)
 
     def load_image(image_filename):
       img = tfio.read_file(image_filename)
@@ -89,7 +93,7 @@ class Omniglot:
 
     # Unbatch map and batch to allow tf to read images concurrently. Class
     # grouping is maintained.
-    shots = image_filenames.unbatch().map(
+    shots = image_filenames.map(
         load_image,
         num_parallel_calls=tfd.AUTOTUNE).batch(self.num_samples_per_class + 1)
     ways = shots.batch(self.num_classes)

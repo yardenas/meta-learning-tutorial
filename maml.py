@@ -53,7 +53,7 @@ class Maml(MetaLearner):
 
     for _ in range(self._adaptation_steps):
       grads = jax.grad(loss)(params)
-      new_params = jax.tree_map(lambda p, g: p - self._inner_lr * g, params,
+      new_params = jax.tree_map(lambda p, g: p - self._inner_lr * g, new_params,
                                 grads)
     return new_params
 
