@@ -71,9 +71,13 @@ class Omniglot:
 
     def get_images_filenames(char):
       all_images = tfio.matching_files(char + '/*.png')
-      return tf.random.shuffle(all_images)[:self.num_samples_per_class + 1]
+      return tf.random.shuffle(
+          all_images, seed=self.seed)[:self.num_samples_per_class + 1]
 
-    image_filenames = characters.map(get_images_filenames)
+    # Use interleave to read the relevant .png files as we iterate through the
+    # 1100 different chars.
+    image_filenames = characters.interleave(
+        get_images_filenames, num_parallel_calls=tfd.AUTOTUNE)
 
     def load_image(image_filename):
       img = tfio.read_file(image_filename)
@@ -85,12 +89,30 @@ class Omniglot:
 
     # Unbatch map and batch to allow tf to read images concurrently. Class
     # grouping is maintained.
-    shots = image_filenames.unbatch().map(load_image).batch(
-        self.num_samples_per_class + 1)
+    shots = image_filenames.unbatch().map(
+        load_image,
+        num_parallel_calls=tfd.AUTOTUNE).batch(self.num_samples_per_class + 1)
     ways = shots.batch(self.num_classes)
     tasks = ways.batch(self.meta_batch_size)
-    return tasks.map(lambda x: (tf.transpose(x, (0, 2, 1, 3, 4, 5)),
-                                tf.eye(
-                                    self.num_classes,
-                                    batch_shape=(self.meta_batch_size, self.
-                                                 num_samples_per_class + 1))))
+
+    def to_support_and_query_sets(batch):
+      support_x, query_x = tf.split(
+          tf.transpose(batch, (0, 2, 1, 3, 4, 5)),
+          (self.num_samples_per_class, 1),
+          axis=1)
+      support_y, query_y = tf.split(
+          tf.eye(
+              self.num_classes,
+              batch_shape=(self.meta_batch_size,
+                           self.num_samples_per_class + 1)),
+          (self.num_samples_per_class, 1),
+          axis=1)
+      ids = tf.range(0, self.num_classes, dtype=dtypes.int32)
+      ids = tf.random.shuffle(ids, seed=self.seed)
+      query_x = tf.gather(query_x, ids, axis=2)
+      query_y = tf.gather(query_y, ids, axis=2)
+      return (support_x, support_y), (query_x, query_y)
+
+    return tasks.map(
+        to_support_and_query_sets,
+        num_parallel_calls=tfd.AUTOTUNE).prefetch(tfd.AUTOTUNE)
