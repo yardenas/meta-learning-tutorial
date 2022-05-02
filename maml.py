@@ -57,7 +57,7 @@ class Maml(MetaLearner):
       return -log_likelihood
 
     for _ in range(self._adaptation_steps):
-      grads = jax.grad(loss)(params)
+      grads = jax.grad(loss)(new_params)
       new_params = jax.tree_map(lambda p, g: p - self._inner_lr * g, new_params,
                                 grads)
     return new_params

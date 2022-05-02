@@ -1,8 +1,9 @@
-from typing import Iterator, List
+from typing import Iterator, List, Tuple
 
-import numpy as np
 import os
 import random
+
+import numpy as np
 
 from tensorflow import data as tfd
 from tensorflow import image as tfi
@@ -33,9 +34,6 @@ class Omniglot:
     data_folder = './omniglot_resized'
     self.img_size = 28, 28
 
-    self.dim_input = np.prod(self.img_size)
-    self.dim_output = self.num_classes
-
     character_folders = [
         os.path.join(data_folder, family, character)
         for family in os.listdir(data_folder)
@@ -54,16 +52,25 @@ class Omniglot:
     self.metatest = self._make_dataset(character_folders[num_train + num_val:])
 
   @property
-  def train_set(self) -> Iterator[np.ndarray]:
+  def train_set(
+      self
+  ) -> Iterator[Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray,
+                                                           np.ndarray]]]:
     yield from self.metatrain.as_numpy_iterator()
 
   @property
-  def eval_set(self) -> Iterator[np.ndarray]:
-    yield from self.metatrain.as_numpy_iterator()
+  def eval_set(
+      self
+  ) -> Iterator[Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray,
+                                                           np.ndarray]]]:
+    yield from self.metaval.as_numpy_iterator()
 
   @property
-  def test_set(self) -> Iterator[np.ndarray]:
-    yield from self.metatrain.as_numpy_iterator()
+  def test_set(
+      self
+  ) -> Iterator[Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray,
+                                                           np.ndarray]]]:
+    yield from self.metatest.as_numpy_iterator()
 
   def _make_dataset(self, folders: List[str]) -> tfd.Dataset:
     characters = tfd.Dataset.from_tensor_slices(folders).shuffle(

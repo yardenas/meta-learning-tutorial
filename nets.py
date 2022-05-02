@@ -12,15 +12,20 @@ def initializer(name: str) -> hk.initializers.Initializer:
 def mlp(
     x,
     activation=jnn.relu,
-    initializer=initializer('he'),
+    initializer=initializer('glorot'),
     output_sizes=(128, 128, 1),
 ):
   x = hk.nets.MLP(output_sizes, activation=activation, w_init=initializer)(x)
-  return x.squeeze(-1)
+  return x
 
 
-def cnn(x, depth, kernels, activation=jnn.relu, initializer=initializer('he')):
-  kwargs = {'stride': 2, 'padding': 'VALID', 'w_init': initializer}
+def cnn(x,
+        depth,
+        kernels,
+        activation=jnn.relu,
+        initializer=initializer('glorot'),
+        stride=2):
+  kwargs = {'stride': stride, 'padding': 'VALID', 'w_init': initializer}
   for i, kernel in enumerate(kernels):
     layer_depth = 2**i * depth
     x = activation(hk.Conv2D(layer_depth, kernel, **kwargs)(x))
