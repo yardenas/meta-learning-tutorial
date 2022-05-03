@@ -11,5 +11,5 @@ def omniglot_dataset():
 
 def test_make_dataset(omniglot_dataset):
   support, query = next(iter(omniglot_dataset.train_set))
-  assert support[0].shape == (128, 1, 3, 28, 28, 1)
-  assert support[1].shape == (128, 1, 3, 3)
+  assert support[0].shape == (128, 3, 28, 28, 1)
+  assert support[1].shape == (128, 3, 3)

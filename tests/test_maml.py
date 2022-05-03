@@ -25,18 +25,13 @@ def dataset():
 def maml_model(dataset):
 
   def net(x):
-
-    def cnn(x):
-      x = nets.cnn(x, depth=32, kernels=(4, 4, 4))
-      return x
-
-    x = cnn(x)
+    x = nets.cnn(x, depth=16, kernels=(4, 4))
     x = hk.Flatten()(x)
     logits = hk.Linear(NUM_CLASSSES)(x)
     return tfd.OneHotCategorical(logits)
 
   support, _ = next(dataset.train_set)
-  model = maml.Maml(hk.BatchApply(net, 3), support[0], 0.4)
+  model = maml.Maml(net, support[0][0], 0.1, adaptation_steps=5)
   return model
 
 
@@ -55,3 +50,16 @@ def update(model, optimizer, prior_params, opt_state, support, query):
   updates, new_opt_state = optimizer.update(grads, opt_state)
   new_params = optax.apply_updates(prior_params, updates)
   return new_params, new_opt_state
+
+
+def test_evaluate(maml_model, dataset):
+  eval_support, eval_query = next(dataset.eval_set)
+  posterior_params = maml_model.adaptation_step(maml_model.prior_params,
+                                                *eval_support)
+
+  def predict_eval(params, x, y):
+    dist = maml_model(params, x)
+    return dist.mode(), dist.log_prob(y)
+
+  predict_eval = jax.vmap(predict_eval)
+  pred, eval_ = predict_eval(posterior_params, *eval_query)

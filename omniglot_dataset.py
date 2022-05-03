@@ -88,7 +88,7 @@ class Omniglot:
     image_filenames = characters.interleave(
         get_images_filenames,
         num_parallel_calls=tfd.AUTOTUNE,
-        block_length=self.num_samples_per_class + 1)
+        block_length=self.num_samples_per_class + 1).repeat()
 
     def load_image(image_filename):
       img = tfio.read_file(image_filename)
@@ -122,7 +122,11 @@ class Omniglot:
       ids = tf.random.shuffle(ids, seed=self.seed)
       query_x = tf.gather(query_x, ids, axis=2)
       query_y = tf.gather(query_y, ids, axis=2)
-      return (support_x, support_y), (query_x, query_y)
+      new_shape = lambda x: tf.concat([(self.meta_batch_size, -1),
+                                       tf.shape(x)[3:]], 0)
+      reshape = lambda x: tf.reshape(x, new_shape(x))
+      return (reshape(support_x), reshape(support_y)), (reshape(query_x),
+                                                        reshape(query_y))
 
     return tasks.map(
         to_support_and_query_sets,

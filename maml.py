@@ -21,7 +21,6 @@ class Maml(MetaLearner):
     net = hk.without_apply_rng(hk.transform(lambda x: model(x)))
     self.net = net.apply
     self._prior_params = net.init(jax.random.PRNGKey(666), example)
-    self._posterior_params = net.init(jax.random.PRNGKey(666), example)
     self._inner_lr = inner_lr
     self._adaptation_steps = adaptation_steps
 
@@ -37,19 +36,12 @@ class Maml(MetaLearner):
   def prior_params(self, new_parameters: Params):
     self._prior_params = new_parameters
 
-  @property
-  def posterior_params(self) -> Params:
-    return self._posterior_params
-
-  @posterior_params.setter
-  def posterior_params(self, new_params: Params):
-    self._posterior_params = new_params
-
   def adaptation_step(self, params: Params, x: jnp.ndarray, y: jnp.ndarray):
-    return self._adaptation_step(params, x, y)
+    return self._adapt(params, x, y)
 
   @partial(jax.jit, static_argnums=0)
-  def _adaptation_step(self, params: Params, x: jnp.ndarray, y: jnp.ndarray):
+  @partial(jax.vmap, in_axes=[None, None, 0, 0])
+  def _adapt(self, params: Params, x: jnp.ndarray, y: jnp.ndarray):
     new_params = params
 
     def loss(params: Params):
@@ -71,12 +63,13 @@ class Maml(MetaLearner):
   def _maml_step(self, params: Params, support: Tuple[jnp.ndarray, jnp.ndarray],
                  query: Tuple[jnp.ndarray, jnp.ndarray]):
 
-    def _step(params):
+    def inner_step(params):
       x_support, y_support = support
-      posterior_params = self._adaptation_step(params, x_support, y_support)
+      posterior_params = self._adapt(params, x_support, y_support)
       x_query, y_query = query
-      log_likelihood = self.net(posterior_params,
-                                x_query).log_prob(y_query).mean()
+      log_likelihood_fn = jax.vmap(lambda p, x, y: self.net(p, x).log_prob(y))
+      log_likelihood = log_likelihood_fn(posterior_params, x_query,
+                                         y_query).mean()
       return -log_likelihood
 
-    return jax.grad(_step)(params)
+    return jax.grad(inner_step)(params)

@@ -29,20 +29,6 @@ class MetaLearner(abc.ABC):
     Update the parameters of the meta-learner given new ones.
     """
 
-  @property
-  @abc.abstractmethod
-  def posterior_params(self) -> Params:
-    """
-    Return the learner's parameters.
-    """
-
-  @posterior_params.setter
-  @abc.abstractmethod
-  def posterior_params(self, new_parameters: Params):
-    """
-    Update the parameters given new ones (typically after adaptation).
-    """
-
   @abc.abstractmethod
   def adaptation_step(self, params: Params, x: jnp.ndarray,
                       y: jnp.ndarray) -> Params:
